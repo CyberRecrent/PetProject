@@ -1,22 +1,38 @@
+version: "3.9"
 
 services:
-  web:
-    build: ./app
-    container_name: fastapi_app
-    ports:
-      - "8000:8000"
+  db:
+    image: postgres:15
+    container_name: petproject_db
     environment:
-      - MONGO_URL=mongodb://mongo:27017
-    depends_on:
-      - mongo
-
-  mongo:
-    image: mongo:6
-    container_name: mongo_db
+      POSTGRES_DB: pet_project
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
     ports:
-      - "27017:27017"
+      - "5432:5432"
     volumes:
-      - mongo_data:/data/db
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser"]
+      interval: 5s
+      retries: 5
+      timeout: 5s
+
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: petproject_app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_HOST=db
+      - DB_NAME=pet_project
+      - DB_USER=myuser
+      - DB_PASSWORD=mypassword
+    volumes:
+      - ./app:/app
 
 volumes:
-  mongo_data:
+  postgres_data:
